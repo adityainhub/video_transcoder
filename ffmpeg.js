@@ -1,3 +1,4 @@
+// ffmpeg.js
 const ffmpeg = require("fluent-ffmpeg");
 
 const resolutions = [
@@ -26,14 +27,16 @@ async function transcodeAll(inputPath, videoId) {
     });
 
     outputs.push({
-      name: r.name,
+      name: r.name, // required for quality
       localPath: outputPath,
       s3Key: `processed-videos/${videoId}/${r.name}.mp4`,
+      contentType: "video/mp4"
     });
   }
 
   // Thumbnail
   const thumbnailPath = `/tmp/${videoId}-thumb.jpg`;
+
   await new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .screenshots({

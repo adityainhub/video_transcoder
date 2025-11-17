@@ -19,19 +19,20 @@ async function run() {
     await downloadFromS3(RAW_BUCKET, RAW_VIDEO_KEY, inputPath);
 
     console.log("Starting transcoding...");
-    const outputs = await transcodeAll(inputPath, VIDEO_ID);
+    const variants = await transcodeAll(inputPath, VIDEO_ID);
 
     console.log("Uploading outputs...");
-    for (const out of outputs) {
-      await uploadToS3(PROCESSED_BUCKET, out.s3Key, out.localPath);
-      console.log("Uploaded:", out.s3Key);
+    for (const v of variants) {
+      await uploadToS3(PROCESSED_BUCKET, v.s3Key, v.localPath, v.contentType);
+      console.log("Uploaded:", v.s3Key);
     }
 
     console.log("Sending completion callback...");
-    await sendCompletion(CALLBACK_URL, VIDEO_ID, outputs);
+    await sendCompletion(CALLBACK_URL, VIDEO_ID, variants);
 
     console.log("Transcoding COMPLETE.");
     process.exit(0);
+
   } catch (err) {
     console.error("TRANSCODING FAILED:", err);
     await sendFailure(CALLBACK_URL, VIDEO_ID);
