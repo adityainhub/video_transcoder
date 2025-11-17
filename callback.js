@@ -2,7 +2,7 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-const ECS_SECRET = process.env.ECS_CALLBACK_SECRET;   // SAME secret used in Spring Boot validator
+const ECS_SECRET = process.env.ECS_CALLBACK_SECRET;
 
 function signPayload(body, timestamp) {
   const payload = `${timestamp}.${body}`;
@@ -12,18 +12,22 @@ function signPayload(body, timestamp) {
 async function sendProcessing(callbackBaseUrl, videoId) {
   console.log("=== Sending Processing Status ===");
   console.log("CALLBACK_BASE_URL =", callbackBaseUrl);
+  console.log("Video ID:", videoId);
   console.log("URL:", `${callbackBaseUrl}/${videoId}/processing`);
   
-  const body = "";
+  const bodyObj = {}; // Empty object
+  const body = JSON.stringify(bodyObj); 
   const timestamp = Date.now().toString();
   const signature = signPayload(body, timestamp);
 
+  console.log("Body:", body);
   console.log("Timestamp:", timestamp);
   console.log("Signature:", signature);
 
   try {
-    const response = await axios.post(`${callbackBaseUrl}/${videoId}/processing`, {}, {
+    const response = await axios.post(`${callbackBaseUrl}/${videoId}/processing`, bodyObj, {
       headers: {
+        "Content-Type": "application/json",
         "X-ECS-Signature": signature,
         "X-ECS-Timestamp": timestamp,
       }
@@ -42,10 +46,28 @@ async function sendProcessing(callbackBaseUrl, videoId) {
 
 async function sendCompletion(callbackBaseUrl, videoId, variants) {
   console.log("=== Sending Completion Status ===");
-  console.log("CALLBACK_BASE_URL =", callbackBaseUrl); 
+  console.log("CALLBACK_BASE_URL =", callbackBaseUrl);
+  console.log("Video ID (raw):", videoId);
+  console.log("Video ID (type):", typeof videoId);
+  
+  // FIX: Parse videoId correctly - it might be a string like "test123" or "123"
+  let numericVideoId;
+  if (typeof videoId === 'string' && !isNaN(videoId)) {
+    // If it's a numeric string like "123"
+    numericVideoId = Number(videoId);
+  } else if (typeof videoId === 'number') {
+    // If it's already a number
+    numericVideoId = videoId;
+  } else {
+    // If it's a non-numeric string like "test123", keep as null or handle error
+    console.error("WARNING: videoId is not numeric:", videoId);
+    numericVideoId = null;
+  }
+  
+  console.log("Video ID (numeric):", numericVideoId);
   
   const bodyObj = {
-    videoId: Number(videoId),
+    videoId: numericVideoId,
     variants: variants.map((v) => ({
       quality: v.name,
       s3Key: v.s3Key,
@@ -91,7 +113,7 @@ async function sendCompletion(callbackBaseUrl, videoId, variants) {
 
 async function sendFailure(callbackBaseUrl, videoId) {
   console.log("=== Sending Failure Status ===");
-  console.log("CALLBACK_BASE_URL =", callbackBaseUrl); 
+  console.log("CALLBACK_BASE_URL =", callbackBaseUrl);
   
   const body = "";
   const timestamp = Date.now().toString();
