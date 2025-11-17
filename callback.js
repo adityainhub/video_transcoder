@@ -9,7 +9,41 @@ function signPayload(body, timestamp) {
   return crypto.createHmac("sha256", ECS_SECRET).update(payload).digest("hex");
 }
 
+async function sendProcessing(callbackBaseUrl, videoId) {
+  console.log("=== Sending Processing Status ===");
+  console.log("CALLBACK_BASE_URL =", callbackBaseUrl);
+  console.log("URL:", `${callbackBaseUrl}/${videoId}/processing`);
+  
+  const body = "";
+  const timestamp = Date.now().toString();
+  const signature = signPayload(body, timestamp);
+
+  console.log("Timestamp:", timestamp);
+  console.log("Signature:", signature);
+
+  try {
+    const response = await axios.post(`${callbackBaseUrl}/${videoId}/processing`, {}, {
+      headers: {
+        "X-ECS-Signature": signature,
+        "X-ECS-Timestamp": timestamp,
+      }
+    });
+
+    console.log("=== Processing Status SUCCESS ===");
+    console.log("Status:", response.status);
+  } catch (err) {
+    console.error("=== Processing Status FAILED ===");
+    console.error("Status:", err.response?.status);
+    console.error("Status Text:", err.response?.statusText);
+    console.error("Response Data:", JSON.stringify(err.response?.data));
+    console.error("Error Message:", err.message);
+  }
+}
+
 async function sendCompletion(callbackBaseUrl, videoId, variants) {
+  console.log("=== Sending Completion Status ===");
+  console.log("CALLBACK_BASE_URL =", callbackBaseUrl); 
+  
   const bodyObj = {
     videoId: Number(videoId),
     variants: variants.map((v) => ({
@@ -24,8 +58,13 @@ async function sendCompletion(callbackBaseUrl, videoId, variants) {
   const timestamp = Date.now().toString();
   const signature = signPayload(body, timestamp);
 
+  console.log("URL:", `${callbackBaseUrl}/${videoId}/completed`);
+  console.log("Body:", body);
+  console.log("Timestamp:", timestamp);
+  console.log("Signature:", signature);
+
   try {
-    await axios.post(`${callbackBaseUrl}/${videoId}/completed`, bodyObj, {
+    const response = await axios.post(`${callbackBaseUrl}/${videoId}/completed`, bodyObj, {
       headers: {
         "Content-Type": "application/json",
         "X-ECS-Signature": signature,
@@ -33,29 +72,52 @@ async function sendCompletion(callbackBaseUrl, videoId, variants) {
       }
     });
 
-    console.log("Completion callback sent.");
+    console.log("=== Callback SUCCESS ===");
+    console.log("Status:", response.status);
+    console.log("Response:", JSON.stringify(response.data));
   } catch (err) {
-    console.error("Completion callback FAILED:", err.response?.data || err.message);
+    console.error("=== Callback FAILED ===");
+    console.error("Status:", err.response?.status);
+    console.error("Status Text:", err.response?.statusText);
+    console.error("Response Data:", JSON.stringify(err.response?.data));
+    console.error("Response Headers:", JSON.stringify(err.response?.headers));
+    console.error("Error Message:", err.message);
+    
+    if (err.response?.data) {
+      console.error("Detailed Error:", err.response.data);
+    }
   }
 }
 
 async function sendFailure(callbackBaseUrl, videoId) {
+  console.log("=== Sending Failure Status ===");
+  console.log("CALLBACK_BASE_URL =", callbackBaseUrl); 
+  
   const body = "";
   const timestamp = Date.now().toString();
   const signature = signPayload(body, timestamp);
 
+  console.log("URL:", `${callbackBaseUrl}/${videoId}/failed`);
+  console.log("Timestamp:", timestamp);
+  console.log("Signature:", signature);
+
   try {
-    await axios.post(`${callbackBaseUrl}/${videoId}/failed`, {}, {
+    const response = await axios.post(`${callbackBaseUrl}/${videoId}/failed`, {}, {
       headers: {
         "X-ECS-Signature": signature,
         "X-ECS-Timestamp": timestamp,
       }
     });
 
-    console.log("Failure callback sent.");
+    console.log("=== Failure Callback SUCCESS ===");
+    console.log("Status:", response.status);
   } catch (err) {
-    console.error("Failure callback FAILED:", err.response?.data || err.message);
+    console.error("=== Failure Callback FAILED ===");
+    console.error("Status:", err.response?.status);
+    console.error("Status Text:", err.response?.statusText);
+    console.error("Response Data:", JSON.stringify(err.response?.data));
+    console.error("Error Message:", err.message);
   }
 }
 
-module.exports = { sendCompletion, sendFailure };
+module.exports = { sendProcessing, sendCompletion, sendFailure };

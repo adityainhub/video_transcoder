@@ -1,18 +1,22 @@
 const path = require("path");
 const { downloadFromS3, uploadToS3 } = require("./s3");
 const { transcodeAll } = require("./ffmpeg");
-const { sendCompletion, sendFailure } = require("./callback");
+const { sendProcessing, sendCompletion, sendFailure } = require("./callback");
 
 const RAW_BUCKET = process.env.S3_RAW_BUCKET;
 const PROCESSED_BUCKET = process.env.S3_PROCESSED_BUCKET;
 const RAW_VIDEO_KEY = process.env.S3_VIDEO_KEY;
 const VIDEO_ID = process.env.VIDEO_ID;
-const CALLBACK_URL = process.env.CALLBACK_URL;
+const CALLBACK_URL = process.env.CALLBACK_BASE_URL;
 
 async function run() {
   console.log("Transcoder starting for video:", VIDEO_ID);
 
   try {
+    // Notify backend that processing has started
+    console.log("Notifying backend: Processing started...");
+    await sendProcessing(CALLBACK_URL, VIDEO_ID);
+
     const inputPath = `/tmp/${VIDEO_ID}-input.mp4`;
 
     console.log("Downloading original video...");
